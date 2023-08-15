@@ -37,35 +37,33 @@ export class Context {
     this.molstar = new PluginUIContext(MySpec);
     this.molstar.init();
   }
-}
 
-async function load(context: Context, url: string) {
-  const response = await fetch(url);
-  const pdb = await response.text();
-
-  const data = await context.molstar.builders.data.rawData({ data: pdb });
-  const trajectory = await context.molstar.builders.structure.parseTrajectory(
-    data,
-    "mmcif"
-  );
-
-  // TODO: don't know how to combine these two steps into one :(
-  await context.molstar.builders.structure.hierarchy.applyPreset(
-    trajectory,
-    "default"
-  );
-  context.molstar.dataTransaction(async () => {
-    await context.molstar.managers.structure.component.applyPreset(
-      context.molstar.managers.structure.hierarchy.current.structures,
-      SbNcbrPartialChargesPreset
+  async load(url: string) {
+    const cifFile = await fetch(url).then((r) => r.text());
+    const data = await this.molstar.builders.data.rawData({ data: cifFile });
+    const trajectory = await this.molstar.builders.structure.parseTrajectory(
+      data,
+      "mmcif"
     );
-  });
+
+    // TODO: don't know how to combine these two steps into one :(
+    await this.molstar.builders.structure.hierarchy.applyPreset(
+      trajectory,
+      "default"
+    );
+    this.molstar.dataTransaction(async () => {
+      await this.molstar.managers.structure.component.applyPreset(
+        this.molstar.managers.structure.hierarchy.current.structures,
+        SbNcbrPartialChargesPreset
+      );
+    });
+  }
 }
 
 export function App() {
   const context = new Context();
   // host this file with `http-server -p 5500 --cors`
-  load(context, "http://localhost:5500/src/example/1f16.fw2.cif");
+  context.load("http://localhost:5500/src/example/1f16.fw2.cif");
 
   return <Viewer context={context} />;
 }
